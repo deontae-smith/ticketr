@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "nv": ". ~/.nvm/nvm.sh && nvm use 23",
+    "backend": "npx convex dev",
+    "purchase": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "dev": "next dev --turbopack",
+    "all": "npm run nv && concurrently \"npm run dev\" \"npm run backend\" \"npm run purchase\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -35,6 +39,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.1.4",
     "postcss": "^8",
