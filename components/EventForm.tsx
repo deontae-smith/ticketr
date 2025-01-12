@@ -11,7 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { z } from 'zod';
+import { boolean, z } from 'zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@clerk/nextjs';
@@ -24,6 +24,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useStorageUrl } from '@/lib/utils';
+import { Checkbox } from './ui/checkbox';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Event name is required'),
@@ -75,6 +76,7 @@ export default function EventForm({ mode, initialData }: EventFormProps) {
   const deleteImage = useMutation(api.storage.deleteImage);
 
   const [removedCurrentImage, setRemovedCurrentImage] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -88,21 +90,40 @@ export default function EventForm({ mode, initialData }: EventFormProps) {
     },
   });
 
+  const [uploadUrlDirectly, setUploadUrlDirectly] = useState(false);
+  // ! only use if going from URL to file
+  const [urlFile, setUrlFile] = useState<File | null>(null);
+
+  const handleUrlToFile = async (url: string): Promise<File> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const randomFileName = `${Math.random().toString(36).substring(2, 15)}.${blob.type.split('/')[1] || 'bin'}`;
+    return new File([blob], randomFileName, { type: blob.type });
+  };
+
   async function onSubmit(values: FormData) {
     if (!user?.id) return;
 
     startTransition(async () => {
       try {
         let imageStorageId = null;
+        let urltoFile = null;
 
-        // Handle image changes
-        if (selectedImage) {
+        //  !CASE 1: User passses in a file as input
+        if (selectedImage && !uploadUrlDirectly) {
           // Upload new image
           imageStorageId = await handleImageUpload(selectedImage);
         }
 
-        // Handle image deletion/update in edit mode
+        // !CASE 2: User passes in a imageUrl as input
+        if (selectedImageUrl && uploadUrlDirectly) {
+          // pass in URL HERE
+          urltoFile = await handleUrlToFile(selectedImageUrl);
+          imageStorageId = await handleImageUpload(urltoFile);
+        }
+
         if (mode === 'edit' && initialData?.imageStorageId) {
+          // Handle image deletion/update in edit mode
           if (removedCurrentImage || selectedImage) {
             // Delete old image from storage
             await deleteImage({
@@ -168,6 +189,7 @@ export default function EventForm({ mode, initialData }: EventFormProps) {
     });
   }
 
+  // !check me
   async function handleImageUpload(file: File): Promise<string | null> {
     try {
       const postUrl = await generateUploadUrl();
@@ -313,49 +335,65 @@ export default function EventForm({ mode, initialData }: EventFormProps) {
           />
 
           {/* Image Upload */}
-          <div className='space-y-4'>
-            <label className='block text-sm font-medium text-gray-700'>
-              Event Image
-            </label>
-            <div className='mt-1 flex items-center gap-4'>
-              {imagePreview || (!removedCurrentImage && currentImageUrl) ? (
-                <div className='relative w-32 aspect-square bg-gray-100 rounded-lg'>
-                  <Image
-                    src={imagePreview || currentImageUrl!}
-                    alt='Preview'
-                    fill
-                    className='object-contain rounded-lg'
-                  />
-                  <button
-                    type='button'
-                    onClick={() => {
-                      setSelectedImage(null);
-                      setImagePreview(null);
-                      setRemovedCurrentImage(true);
-                      if (imageInput.current) {
-                        imageInput.current.value = '';
-                      }
-                    }}
-                    className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors'
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
+          {/* Image Upload */}
+          <div className='mt-1 flex items-center gap-4'>
+            {imagePreview || (!removedCurrentImage && currentImageUrl) ? (
+              <div className='relative w-32 aspect-square bg-gray-100 rounded-lg'>
+                <Image
+                  src={imagePreview || currentImageUrl!}
+                  alt='Preview'
+                  fill
+                  className='object-contain rounded-lg'
+                />
+                <button
+                  type='button'
+                  onClick={() => {
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                    setRemovedCurrentImage(true);
+                    if (imageInput.current) {
+                      imageInput.current.value = '';
+                    }
+                  }}
+                  className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors'
+                >
+                  ×
+                </button>
+              </div>
+            ) : !uploadUrlDirectly ? (
+              <div>
                 <input
                   type='file'
                   accept='image/*'
                   onChange={handleImageChange}
                   ref={imageInput}
-                  className='block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100'
+                  className='block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
                 />
-              )}
-            </div>
+              </div>
+            ) : (
+              <input
+                type='text'
+                placeholder='Enter image URL'
+                className='w-64 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none'
+                onChange={(e) => setSelectedImageUrl(e.target.value)}
+              />
+            )}
+          </div>
+
+          <div className='space-x-2'>
+            <Checkbox
+              onCheckedChange={(checked) => {
+                setUploadUrlDirectly(checked === true); // Ensure only `true` or `false` is passed.
+              }}
+              className='ml-[8px]'
+            />
+
+            <label
+              htmlFor='terms2'
+              className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+            >
+              Upload Url Instead
+            </label>
           </div>
         </div>
 
