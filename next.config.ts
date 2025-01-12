@@ -1,7 +1,15 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'utmost-crane-455.convex.cloud',
+        pathname: '**', // Use '**' to allow all paths or specify a pattern if needed
+      },
+    ],
+  },
 };
 
 export default nextConfig;
