@@ -34,7 +34,6 @@ export default function EventCard({ eventId }: { eventId: Id<'events'> }) {
     userId: user?.id ?? '',
   });
   const imageUrl = useStorageUrl(event?.imageStorageId);
-  console.log(imageUrl, 'url');
 
   if (!event || !availability) {
     return null;
