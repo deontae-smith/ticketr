@@ -11,7 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { boolean, z } from 'zod';
+import { z } from 'zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useUser } from '@clerk/nextjs';
@@ -91,8 +91,6 @@ export default function EventForm({ mode, initialData }: EventFormProps) {
   });
 
   const [uploadUrlDirectly, setUploadUrlDirectly] = useState(false);
-  // ! only use if going from URL to file
-  const [urlFile, setUrlFile] = useState<File | null>(null);
 
   const handleUrlToFile = async (url: string): Promise<File> => {
     const response = await fetch(url);
